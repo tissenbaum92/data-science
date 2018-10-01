@@ -17,7 +17,7 @@
 
 (provide aref read-csv write-csv ci subset $ group-with aggregate sorted-counts
 	 hist hist* scale log-base xs linear-model linear-model* chi-square-goodness
-	 svd-1d cov document->tokens tdm t cosine-similarity
+	 svd-1d cov document->tokens tdm dtm cosine-similarity
 	 token->sentiment list->sentiment remove-urls
 	 remove-punctuation remove-stopwords n-gram qq-plot qq-plot*
 	 (all-from-out "./lexicons/nrc-lexicon"
@@ -500,8 +500,7 @@
        (hash-keys tdm-hash)
        ;; tf-idf, with row order matching the ordered list of terms
        ;; also returned
-       (matrix-map * tf idf)))
-    ))
+       (matrix-map * tf idf)))))
 
 (define (tf-matrix . corpus)
   ;;; Create a unique list of items
@@ -553,12 +552,7 @@
        (hash-keys tdm-hash)
        ;; tf-idf, with row order matching the ordered list of terms
        ;; also returned
-       tf))
-    ))
-
-
-
-
+       tf))))
 
 ;;; Same as tdm, but with documents returned as rows and terms as columns.
 (define (dtm . corpus)
@@ -569,19 +563,15 @@
      (first temp)
      ;; tf-idf in document-term-matrix format
      (matrix-transpose (second temp)))))
-      
-     
- (define (transpose-tf-matrix . corpus)
+
+(define (transpose-tf-matrix . corpus)
   (let ([temp (apply tf-matrix corpus)])
-    ;; simply the transpose of the tf-matrix
+    ;; dtm is simply the transpose of the tdm
     (list
      ;; Ordered list of terms
      (first temp)
      ;; tf-idf in document-term-matrix format
      (matrix-transpose (second temp)))))
-     
-    
-
 
 ;;; Cosine similarity for two vectors (row matrices)
 (define (cosine-similarity v1 v2)
