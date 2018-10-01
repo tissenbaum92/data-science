@@ -17,7 +17,7 @@
 
 (provide aref read-csv write-csv ci subset $ group-with aggregate sorted-counts
 	 hist hist* scale log-base xs linear-model linear-model* chi-square-goodness
-	 svd-1d cov document->tokens tdm dtm cosine-similarity
+	 svd-1d cov document->tokens tdm t cosine-similarity
 	 token->sentiment list->sentiment remove-urls
 	 remove-punctuation remove-stopwords n-gram qq-plot qq-plot*
 	 (all-from-out "./lexicons/nrc-lexicon"
@@ -500,7 +500,65 @@
        (hash-keys tdm-hash)
        ;; tf-idf, with row order matching the ordered list of terms
        ;; also returned
-       (matrix-map * tf idf)))))
+       (matrix-map * tf idf)))
+    ))
+
+(define (tf-matrix . corpus)
+  ;;; Create a unique list of items
+  (define (unique lst) (remove-duplicates lst))
+
+  ;;; Create a hash of zeroed-out values. This is used to ensure that
+  ;;; each document has a value of zero for words contained in other
+  ;;; documents, but not in itself. 
+  (define (make-zeros-hash keys)
+    (let ([n (length keys)])
+      (make-immutable-hash (map list keys (build-list n (λ (x) 0))))))
+
+  ;;; Turn a single document hash into one that contains all words
+  ;;; across all documents
+  (define (add-missing-terms hsh all-words)
+    (hash-union hsh
+		(make-zeros-hash all-words)
+		#:combine/key (λ (k v1 v2) v1)))
+
+  ;; Construct the term-document-matrix
+  (let* ([num-docs (length corpus)]
+	 [all-words (unique (apply append (map (λ (x) ($ x 0)) corpus)))]
+	 [tdm-hash
+	  (apply
+	   hash-union
+	   (map (λ (document)
+		  (add-missing-terms (make-immutable-hash document)
+				     all-words))
+		corpus)
+	   #:combine/key (λ (k v1 v2) (append v1 v2)))])
+    ;; We have the raw tdm counts. We normalize and turn into a tf-idf
+    ;; matrix 
+    (let* ([raw-tdm (list*->matrix (hash-values tdm-hash))]
+	   ;; How frequently each terms appears in a document,
+	   ;; normalized 
+	   [tf (matrix-normalize-cols raw-tdm 1)]
+	   ;; Number of documents containing each term
+	   [docs-with-term (matrix-sum
+			    (matrix-cols
+			     (matrix-map (λ (x) (if (equal? x 0) 0 1))
+					 raw-tdm)))]
+	   ;; idf 
+	   [temp (matrix-map
+		  (λ (x) (log-base (/ num-docs x) #:base 10))
+		  docs-with-term)]
+	   [idf (matrix-augment (make-list num-docs temp))])
+      (list
+       ;; Ordered list of terms
+       (hash-keys tdm-hash)
+       ;; tf-idf, with row order matching the ordered list of terms
+       ;; also returned
+       tf))
+    ))
+
+
+
+
 
 ;;; Same as tdm, but with documents returned as rows and terms as columns.
 (define (dtm . corpus)
@@ -511,6 +569,19 @@
      (first temp)
      ;; tf-idf in document-term-matrix format
      (matrix-transpose (second temp)))))
+      
+     
+ (define (transpose-tf-matrix . corpus)
+  (let ([temp (apply tf-matrix corpus)])
+    ;; simply the transpose of the tf-matrix
+    (list
+     ;; Ordered list of terms
+     (first temp)
+     ;; tf-idf in document-term-matrix format
+     (matrix-transpose (second temp)))))
+     
+    
+
 
 ;;; Cosine similarity for two vectors (row matrices)
 (define (cosine-similarity v1 v2)
