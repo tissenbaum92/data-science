@@ -620,6 +620,27 @@
      (first temp)
      ;; tf-idf in document-term-matrix format
      (matrix-transpose (second temp)))))
+      
+     
+ (define (transpose-tf-matrix . corpus)
+  (let ([temp (apply tf-matrix corpus)])
+    ;; simply the transpose of the tf-matrix
+    (list
+     ;; Ordered list of terms
+     (first temp)
+     ;; tf-idf in document-term-matrix format
+     (matrix-transpose (second temp)))))
+     
+     
+ (define (transpose-idf-matrix . corpus)
+  (let ([temp (apply idf-matrix corpus)])
+    ;; simply the transpose of the idf-matrix
+    (list
+     ;; Ordered list of terms
+     (first temp)
+     ;; tf-idf in document-term-matrix format
+     (matrix-transpose (second temp)))))
+
 
 ;;; Cosine similarity for two vectors (row matrices)
 (define (cosine-similarity v1 v2)
